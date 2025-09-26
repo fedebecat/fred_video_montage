@@ -72,7 +72,7 @@ MONTAGE_W = 1920
 
 TRANSITION_FRAMES = 100  # Number of frames for the zoom transition between levels
 MAX_GRID_LEVEL = 7       # The highest grid level to reach (e.g., level 7 is a 15x15 grid)
-save = False
+save = True
 
 if save:
     # insert timestamp in video name
@@ -83,7 +83,6 @@ if save:
 
 # Create enough generators for all the videos we'll need
 num_generators_needed = (2 * MAX_GRID_LEVEL + 1)**2
-#generators = [gen_random_video(VIDEO_H, VIDEO_W, np.random.rand() * 100 + 50, np.random.rand() * 20 + 5) for _ in range(num_generators_needed)]
 generators = [frame_generator(x) for x in frame_paths.values()]
 
 # shuffle generators
@@ -160,21 +159,41 @@ while True:
     for pos, gen in active_cells.items():
         video_frame = next(gen)
         
-        current_cell_w = int(VIDEO_W * render_zoom)
-        current_cell_h = int(VIDEO_H * render_zoom)
+       # 1. Mantieni le dimensioni esatte (float) per i calcoli di posizione
+        cell_w_float = VIDEO_W * render_zoom
+        cell_h_float = VIDEO_H * render_zoom
+
+        # 1. Calcola le coordinate di inizio e fine della cella usando i float
+        paste_x_start_float = start_x_offset + (pos[0] + grid_level) * cell_w_float
+        paste_y_start_float = start_y_offset + (pos[1] + grid_level) * cell_h_float
         
-        if current_cell_w <= 0 or current_cell_h <= 0:
+        # La coordinata "end" è semplicemente la coordinata "start" della cella successiva
+        paste_x_end_float = start_x_offset + (pos[0] + grid_level + 1) * cell_w_float
+        paste_y_end_float = start_y_offset + (pos[1] + grid_level + 1) * cell_h_float
+
+        # 2. Converti le coordinate in posizioni di pixel (interi)
+        paste_x = int(paste_x_start_float)
+        paste_y = int(paste_y_start_float)
+
+        # 3. La dimensione del frame è la differenza tra le posizioni dei pixel di fine e inizio.
+        #    Questo garantisce che non ci siano buchi!
+        resized_cell_w = int(paste_x_end_float) - paste_x
+        resized_cell_h = int(paste_y_end_float) - paste_y
+
+        if resized_cell_w <= 0 or resized_cell_h <= 0:
             continue
 
-        resized_frame = cv2.resize(video_frame, (current_cell_w, current_cell_h))
+        resized_frame = cv2.resize(video_frame, (resized_cell_w, resized_cell_h))
 
-        paste_x = int(start_x_offset + (pos[0] + grid_level) * current_cell_w)
-        paste_y = int(start_y_offset + (pos[1] + grid_level) * current_cell_h)
+        # 3. Calcola la posizione usando i valori float e converti in int solo alla fine
+        paste_x = int(start_x_offset + (pos[0] + grid_level) * cell_w_float)
+        paste_y = int(start_y_offset + (pos[1] + grid_level) * cell_h_float)
 
+        # Il resto della logica per incollare il frame rimane invariato
         paste_x_start = max(0, paste_x)
         paste_y_start = max(0, paste_y)
-        paste_x_end = min(MONTAGE_W, paste_x + current_cell_w)
-        paste_y_end = min(MONTAGE_H, paste_y + current_cell_h)
+        paste_x_end = min(MONTAGE_W, paste_x + resized_cell_w)
+        paste_y_end = min(MONTAGE_H, paste_y + resized_cell_h)
 
         slice_x_start = paste_x_start - paste_x
         slice_y_start = paste_y_start - paste_y
