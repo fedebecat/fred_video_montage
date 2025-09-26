@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import json
 import os
+import time
 
 to_timestamp = lambda idx: str(float("{:.6f}".format((idx+1)*0.033333)))
 
@@ -71,10 +72,13 @@ MONTAGE_W = 1920
 
 TRANSITION_FRAMES = 100  # Number of frames for the zoom transition between levels
 MAX_GRID_LEVEL = 7       # The highest grid level to reach (e.g., level 7 is a 15x15 grid)
+save = False
 
-out_video_path = 'video_wall_fred.mp4'
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out_video = cv2.VideoWriter(out_video_path, fourcc, 30.0, (MONTAGE_W, MONTAGE_H))
+if save:
+    # insert timestamp in video name
+    out_video_path = f'video_wall_fred_{int(time.time())}.mp4'
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out_video = cv2.VideoWriter(out_video_path, fourcc, 30.0, (MONTAGE_W, MONTAGE_H))
 
 
 # Create enough generators for all the videos we'll need
@@ -188,9 +192,11 @@ while True:
 
     transition_progress = (transition_progress + 1) % TRANSITION_FRAMES
 
-    out_video.write(cv2.cvtColor(montage_frame, cv2.COLOR_RGB2BGR))
+    if save:
+        out_video.write(cv2.cvtColor(montage_frame, cv2.COLOR_RGB2BGR))
 
-out_video.release()
+if save:
+    out_video.release()
 
 cv2.destroyAllWindows()
 print("Video display finished.")
